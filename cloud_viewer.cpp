@@ -2,6 +2,15 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/features/shot.h>
 #include <pcl/keypoints/iss_3d.h>
+#include <pcl/keypoints/harris_3d.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/visualization/point_cloud_color_handlers.h>
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/console/parse.h>
+#include <pcl/common/common.h>
+#include <pcl/io/obj_io.h>
+#include <pcl/io/vtk_lib_io.h>
 
 double
 computeCloudResolution(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& cloud)
@@ -96,6 +105,63 @@ int iss_detector()
 	return 0;
 }
 
+int harris_3d_detector(std::string file_name)
+{
+	pcl::console::print_highlight("Harris 3D Keypoint detector");
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	if (pcl::io::loadPCDFile<pcl::PointXYZ>(file_name, *cloud) == -1) // load the file
+	{
+		pcl::console::print_error("Couldn't read file %s!\n", file_name);
+		return (-1);
+	}
+
+	pcl::HarrisKeypoint3D <pcl::PointXYZ, pcl::PointXYZI> detector;
+	pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints(new pcl::PointCloud<pcl::PointXYZI>);
+	detector.setNonMaxSupression(true);
+	detector.setInputCloud(cloud);
+	detector.setThreshold(1e-6);
+	detector.setRadius(0.10);
+	pcl::StopWatch watch;
+	detector.compute(*keypoints);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr harris3d(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::copyPointCloud(*keypoints, *harris3d);
+
+	pcl::console::print_highlight("\nNo of cloud points:  %zd in %lfs\n", cloud->size(), watch.getTimeSeconds());
+
+	pcl::console::print_highlight("Detected %zd points in %lfs\n", keypoints->size(), watch.getTimeSeconds());
+
+
+
+	/*pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> white(cloud, 255, 255, 255);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> red(harris3d, 255, 0, 0);
+
+
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+	viewer->setBackgroundColor(0, 0, 0);
+	viewer->addPointCloud<pcl::PointXYZ>(cloud, white, "cloud");
+	viewer->addPointCloud<pcl::PointXYZ>(harris3d, red, "keypoints2");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "keypoints2");
+	viewer->addCoordinateSystem(1.0, "global");
+	viewer->initCameraParameters();
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+	}*/
+
+	pcl::PointIndicesConstPtr keypoints_indices = detector.getKeypointsIndices();
+	if (!keypoints_indices->indices.empty())
+	{
+		pcl::io::savePCDFile("keypoints.pcd", *cloud, keypoints_indices->indices, true);
+		pcl::console::print_info("Saved keypoints to keypoints.pcd\n");
+	}
+	else
+		pcl::console::print_warn("Keypoints indices are empty!\n");
+
+	return 0;
+}
+
 int shot_descriptor()
 {
 	// Object for storing the point cloud.
@@ -139,10 +205,50 @@ int shot_descriptor()
 	return 0;
 }
 
+
+int show_pcd(std::string pcd_file)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	if (pcl::io::loadPCDFile<pcl::PointXYZ>(pcd_file, *cloud) == -1) // load the file
+	{
+		pcl::console::print_error("Couldn't read file %s!\n", pcd_file);
+		return (-1);
+	}
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> white(cloud, 255, 255, 255);
+	
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+	viewer->setBackgroundColor(0, 0, 0);
+	viewer->addPointCloud<pcl::PointXYZ>(cloud, white, "cloud");
+	viewer->addCoordinateSystem(1.0,"global");
+	viewer->initCameraParameters();
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+	}
+
+	return 0;
+}
+
+
+int convert_to_pcd(std::string obj_file)
+{
+	pcl::PolygonMesh mesh;
+	pcl::io::loadPolygonFileOBJ(obj_file, mesh);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::fromPCLPointCloud2(mesh.cloud, *cloud);
+	pcl::io::savePCDFileASCII("head1PCD.pcd", *cloud);
+	return 0;
+}
 int
 main(int argc, char** argv)
 {
 		
-	iss_detector();
+	//iss_detector();
 	//shot_descriptor();
+	harris_3d_detector("head1PCD.pcd");
+	//show_obj("Tomato_WildType_High-heat_A_D4.obj");
+	//convert_to_pcd("Tomato_WildType_High-heat_A_D4.obj");
+	show_pcd("head1PCD.pcd");
+
 }
