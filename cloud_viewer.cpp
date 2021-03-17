@@ -42,15 +42,16 @@ computeCloudResolution(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& cloud)
 	return resolution;
 }
 
-int iss_detector()
+int iss_detector(std::string file_name)
 {
 	// Objects for storing the point cloud and the keypoints.
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints(new pcl::PointCloud<pcl::PointXYZ>);
 
 	// Read a PCD file from disk.
-	if (pcl::io::loadPCDFile<pcl::PointXYZ>("bunny.pcd", *cloud) != 0)
+	if (pcl::io::loadPCDFile<pcl::PointXYZ>(file_name, *cloud) != 0)
 	{
+		pcl::console::print_error("Couldn't read file %s!\n", file_name);
 		return -1;
 	}
 
@@ -72,36 +73,30 @@ int iss_detector()
 	detector.setThreshold32(0.975);
 	// Set the number of prpcessing threads to use. 0 sets it to automatic.
 	detector.setNumberOfThreads(4);
+	pcl::StopWatch watch;
 
 	detector.compute(*keypoints);
 
 	std::cout << " ISS keypoint estimated";
 	std::cout << " with size " << keypoints->size() << std::endl;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr iss3d(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::copyPointCloud(*keypoints, *iss3d);
 
-	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-	// Object for storing the SHOT descriptors for each point.
-	pcl::PointCloud<pcl::SHOT352>::Ptr descriptors(new pcl::PointCloud<pcl::SHOT352>());
+	pcl::console::print_highlight("\n No of cloud points:  %zd in %lfs\n", cloud->size(), watch.getTimeSeconds());
 
-	// Estimate the normals.
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
-	normalEstimation.setInputCloud(keypoints);
-	normalEstimation.setRadiusSearch(0.03);
-	normalEstimation.setSearchMethod(kdtree);
-	normalEstimation.compute(*normals);
-
-	// SHOT estimation object.
-	pcl::SHOTEstimation<pcl::PointXYZ, pcl::Normal, pcl::SHOT352> shot;
-	shot.setInputCloud(keypoints);
-	shot.setInputNormals(normals);
-	// The radius that defines which of the keypoint's neighbors are described.
-	// If too large, there may be clutter, and if too small, not enough points may be found.
-	shot.setRadiusSearch(0.50);
-
-	shot.compute(*descriptors);
+	pcl::console::print_highlight("Detected %zd points in %lfs\n", keypoints->size(), watch.getTimeSeconds());
 
 
-	std::cout << " SHOT feature estimated";
-	std::cout << " with size " << descriptors->size() << std::endl;
+	pcl::PointIndicesConstPtr keypoints_indices = detector.getKeypointsIndices();
+	if (!keypoints_indices->indices.empty())
+	{
+		pcl::io::savePCDFile("iss_keypoints.pcd", *cloud, keypoints_indices->indices, true);
+		pcl::console::print_info("Saved keypoints to iss_keypoints.pcd\n");
+	}
+	else
+		pcl::console::print_warn("Keypoints indices are empty!\n");
+
+	
 	return 0;
 }
 
@@ -121,7 +116,9 @@ int harris_3d_detector(std::string file_name)
 	detector.setNonMaxSupression(true);
 	detector.setInputCloud(cloud);
 	detector.setThreshold(1e-6);
-	detector.setRadius(0.10);
+	double resolution = computeCloudResolution(cloud);
+
+	detector.setRadius(resolution * 2);
 	pcl::StopWatch watch;
 	detector.compute(*keypoints);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr harris3d(new pcl::PointCloud<pcl::PointXYZ>);
@@ -132,29 +129,11 @@ int harris_3d_detector(std::string file_name)
 	pcl::console::print_highlight("Detected %zd points in %lfs\n", keypoints->size(), watch.getTimeSeconds());
 
 
-
-	/*pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> white(cloud, 255, 255, 255);
-	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> red(harris3d, 255, 0, 0);
-
-
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-	viewer->setBackgroundColor(0, 0, 0);
-	viewer->addPointCloud<pcl::PointXYZ>(cloud, white, "cloud");
-	viewer->addPointCloud<pcl::PointXYZ>(harris3d, red, "keypoints2");
-	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "keypoints2");
-	viewer->addCoordinateSystem(1.0, "global");
-	viewer->initCameraParameters();
-	while (!viewer->wasStopped())
-	{
-		viewer->spinOnce(100);
-		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
-	}*/
-
 	pcl::PointIndicesConstPtr keypoints_indices = detector.getKeypointsIndices();
 	if (!keypoints_indices->indices.empty())
 	{
-		pcl::io::savePCDFile("keypoints.pcd", *cloud, keypoints_indices->indices, true);
-		pcl::console::print_info("Saved keypoints to keypoints.pcd\n");
+		pcl::io::savePCDFile("3d_haris_keypoints.pcd", *cloud, keypoints_indices->indices, true);
+		pcl::console::print_info("Saved keypoints to 3d_haris_keypoints.pcd\n");
 	}
 	else
 		pcl::console::print_warn("Keypoints indices are empty!\n");
@@ -162,7 +141,7 @@ int harris_3d_detector(std::string file_name)
 	return 0;
 }
 
-int shot_descriptor()
+int shot_descriptor(std::string file_name)
 {
 	// Object for storing the point cloud.
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -172,8 +151,9 @@ int shot_descriptor()
 	pcl::PointCloud<pcl::SHOT352>::Ptr descriptors(new pcl::PointCloud<pcl::SHOT352>());
 
 	// Read a PCD file from disk.
-	if (pcl::io::loadPCDFile<pcl::PointXYZ>("bunny.pcd", *cloud) != 0)
+	if (pcl::io::loadPCDFile<pcl::PointXYZ>(file_name, *cloud) != 0)
 	{
+		pcl::console::print_error("Couldn't read file %s!\n", file_name);
 		return -1;
 	}
 
@@ -184,6 +164,7 @@ int shot_descriptor()
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
 	normalEstimation.setInputCloud(cloud);
 	normalEstimation.setRadiusSearch(0.03);
+
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
 	normalEstimation.setSearchMethod(kdtree);
 	normalEstimation.compute(*normals);
@@ -195,13 +176,17 @@ int shot_descriptor()
 	// The radius that defines which of the keypoint's neighbors are described.
 	// If too large, there may be clutter, and if too small, not enough points may be found.
 	shot.setRadiusSearch(0.50);
+	shot.setKSearch(0);
 
 	shot.compute(*descriptors);
 
 
 	std::cout << " SHOT feature estimated";
 	std::cout << " with size " << descriptors->size() << std::endl;
+	std::cout << "SHOT output points.size (): " << descriptors->points.size() << std::endl;
 
+	// Display and retrieve the SHOT descriptor for the first point.
+	std::cout << descriptors->points[0] << std::endl;
 	return 0;
 }
 
@@ -240,15 +225,16 @@ int convert_to_pcd(std::string obj_file)
 	pcl::io::savePCDFileASCII("head1PCD.pcd", *cloud);
 	return 0;
 }
-int
-main(int argc, char** argv)
+
+
+
+int main(int argc, char** argv)
 {
 		
-	//iss_detector();
-	//shot_descriptor();
-	harris_3d_detector("head1PCD.pcd");
-	//show_obj("Tomato_WildType_High-heat_A_D4.obj");
+	shot_descriptor("iss_keypoints.pcd");
+	//harris_3d_detector("head1PCD.pcd");
 	//convert_to_pcd("Tomato_WildType_High-heat_A_D4.obj");
-	show_pcd("head1PCD.pcd");
+	//iss_detector("head1PCD.pcd");
+	//show_pcd("iss_keypoints.pcd");
 
 }
