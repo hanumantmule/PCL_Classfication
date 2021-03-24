@@ -11,6 +11,9 @@
 #include <pcl/common/common.h>
 #include <pcl/io/obj_io.h>
 #include <pcl/io/vtk_lib_io.h>
+#include <pcl/keypoints/sift_keypoint.h>
+
+
 
 double
 computeCloudResolution(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& cloud)
@@ -141,6 +144,72 @@ int harris_3d_detector(std::string file_name)
 	return 0;
 }
 
+int sift_3d_detector(std::string file_name)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_xyz(new pcl::PointCloud<pcl::PointXYZ>);
+	if (pcl::io::loadPCDFile<pcl::PointXYZ>(file_name, *cloud_xyz) == -1) // load the file
+	{
+		PCL_ERROR("Couldn't read file");
+		return -1;
+	}
+	std::cout << "points: " << cloud_xyz->points.size() << std::endl;
+	
+	// Parameters for sift computation
+	const float min_scale = 0.01f;
+	const int n_octaves = 3;
+	const int n_scales_per_octave = 4;
+	const float min_contrast = 0.001f;
+
+	// Estimate the normals of the cloud_xyz
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::PointNormal> ne;
+	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_normals(new pcl::PointCloud<pcl::PointNormal>);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_n(new pcl::search::KdTree<pcl::PointXYZ>());
+
+	ne.setInputCloud(cloud_xyz);
+	ne.setSearchMethod(tree_n);
+	ne.setRadiusSearch(0.2);
+	ne.compute(*cloud_normals);
+
+	// Copy the xyz info from cloud_xyz and add it to cloud_normals as the xyz field in PointNormals estimation is zero
+	for (size_t i = 0; i < cloud_normals->points.size(); ++i)
+	{
+		cloud_normals->points[i].x = cloud_xyz->points[i].x;
+		cloud_normals->points[i].y = cloud_xyz->points[i].y;
+		cloud_normals->points[i].z = cloud_xyz->points[i].z;
+	}
+
+	// Estimate the sift interest points using normals values from xyz as the Intensity variants
+	pcl::SIFTKeypoint<pcl::PointNormal, pcl::PointWithScale> sift;
+	pcl::PointCloud<pcl::PointWithScale> result;
+	pcl::search::KdTree<pcl::PointNormal>::Ptr tree(new pcl::search::KdTree<pcl::PointNormal>());
+	sift.setSearchMethod(tree);
+	sift.setScales(min_scale, n_octaves, n_scales_per_octave);
+	sift.setMinimumContrast(min_contrast);
+	sift.setInputCloud(cloud_normals);
+	sift.compute(result);
+
+	std::cout << "No of SIFT points in the result are " << result.points.size() << std::endl;
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp(new pcl::PointCloud<pcl::PointXYZ>);
+	copyPointCloud(result, *cloud_temp);
+	std::cout << "SIFT points in the cloud_temp are " << cloud_temp->points.size() << std::endl;
+
+
+	// Visualization of keypoints along with the original cloud
+	pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> keypoints_color_handler(cloud_temp, 0, 255, 0);
+	viewer.setBackgroundColor(0.0, 0.0, 0.0);
+	//viewer.addPointCloud(cloud_xyz, cloud_color_handler, "cloud");
+	viewer.addPointCloud(cloud_temp, keypoints_color_handler, "keypoints");
+	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 7, "keypoints");
+
+	while (!viewer.wasStopped())
+	{
+		viewer.spinOnce();
+	}
+	return 0;
+}
+
 int shot_descriptor(std::string file_name)
 {
 	// Object for storing the point cloud.
@@ -199,17 +268,19 @@ int show_pcd(std::string pcd_file)
 		pcl::console::print_error("Couldn't read file %s!\n", pcd_file);
 		return (-1);
 	}
-	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> white(cloud, 255, 255, 255);
-	
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-	viewer->setBackgroundColor(0, 0, 0);
-	viewer->addPointCloud<pcl::PointXYZ>(cloud, white, "cloud");
-	viewer->addCoordinateSystem(1.0,"global");
-	viewer->initCameraParameters();
-	while (!viewer->wasStopped())
+		
+	// Visualization of keypoints along with the original cloud
+	pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> keypoints_color_handler(cloud, 0, 255, 0);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_color_handler(cloud, 255, 0, 0);
+	viewer.setBackgroundColor(0.0, 0.0, 0.0);
+	//viewer.addPointCloud(cloud_xyz, cloud_color_handler, "cloud");
+	viewer.addPointCloud(cloud, keypoints_color_handler, "keypoints");
+	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 7, "keypoints");
+
+	while (!viewer.wasStopped())
 	{
-		viewer->spinOnce(100);
-		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+		viewer.spinOnce();
 	}
 
 	return 0;
@@ -231,10 +302,10 @@ int convert_to_pcd(std::string obj_file)
 int main(int argc, char** argv)
 {
 		
-	shot_descriptor("iss_keypoints.pcd");
+	//shot_descriptor("iss_keypoints.pcd");
 	//harris_3d_detector("head1PCD.pcd");
 	//convert_to_pcd("Tomato_WildType_High-heat_A_D4.obj");
 	//iss_detector("head1PCD.pcd");
 	//show_pcd("iss_keypoints.pcd");
-
+	sift_3d_detector("head1PCD.pcd");
 }
