@@ -192,16 +192,16 @@ int harris_3d_detector(std::string file_name)
 
 	pcl::console::print_highlight("Detected %zd points in %lfs\n", keypoints->size(), watch.getTimeSeconds());
 
-	/*
+	
 	pcl::PointIndicesConstPtr keypoints_indices = detector.getKeypointsIndices();
 	if (!keypoints_indices->indices.empty())
 	{
-		pcl::io::savePCDFile("3d_haris_keypoints.pcd", *cloud, keypoints_indices->indices, true);
+		pcl::io::savePCDFile("./Dataset/3d_haris_keypoints.pcd", *cloud, keypoints_indices->indices, false);
 		pcl::console::print_info("Saved keypoints to 3d_haris_keypoints.pcd\n");
 	}
 	else
 		pcl::console::print_warn("Keypoints indices are empty!\n");
-	*/
+	
 
 	// Visualization of keypoints along with the original cloud
 	pcl::visualization::PCLVisualizer viewer("PCL Viewer");
@@ -309,7 +309,7 @@ int shot_descriptor(std::string file_name)
 	// Estimate the normals.
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
 	normalEstimation.setInputCloud(cloud);
-	normalEstimation.setRadiusSearch(0.03);
+	normalEstimation.setRadiusSearch(0.99);
 
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
 	normalEstimation.setSearchMethod(kdtree);
@@ -321,7 +321,7 @@ int shot_descriptor(std::string file_name)
 	shot.setInputNormals(normals);
 	// The radius that defines which of the keypoint's neighbors are described.
 	// If too large, there may be clutter, and if too small, not enough points may be found.
-	shot.setRadiusSearch(0.50);
+	shot.setRadiusSearch(0.99);
 	shot.setKSearch(0);
 
 	shot.compute(*descriptors);
@@ -374,37 +374,41 @@ int convert_to_pcd(std::string obj_file, std::string pcd_file)
 	return 0;
 }
 
-
-
-int main(int argc, char** argv)
+int list_files(std::string dirPath)
 {
-		
-	//shot_descriptor("iss_keypoints.pcd");
-	//harris_3d_detector("./Dataset/objtopcd.pcd");
-	//convert_to_pcd("./Dataset/Tobacco_WildType_High-heat_C_D0.obj");
-	//iss_detector("./Dataset/objtopcd.pcd");
-	//show_pcd("./Dataset/objtopcd.pcd");
-	//sift_3d_detector("./Dataset/objtopcd.pcd");
-
-	std::string dirPath = "./Dataset";
-	// Get recursive list of files in given directory and its sub directories
 	std::vector<std::string> listOfFiles = getAllFilesInDir(dirPath);
 	// Iterate over the vector and print all files
 	for (auto str : listOfFiles)
 	{
 		//std::cout << str << std::endl;
 		if (str.substr(str.find_last_of(".") + 1) == "obj") {
-			
+
 			std::string pcd_file_name = str.substr(0, str.find_last_of('.')) + ".pcd";
 			//cout << pcd_file_name << endl;
 			convert_to_pcd(str, pcd_file_name);
 		}
 		else {
-			std::cout << "Skipping file: "<< str<<" Extenstion is not obj..." << std::endl;
+			std::cout << "Skipping file: " << str << " Extenstion is not obj..." << std::endl;
 		}
-	
+
 
 	}
 	std::cout << "**********************" << std::endl;
-	std::cout << listOfFiles.size();
+	return listOfFiles.size();
+}
+
+int main(int argc, char** argv)
+{
+		
+	shot_descriptor("./Dataset/3d_haris_keypoints.pcd");
+	//harris_3d_detector("./Dataset/Tomato_WildType_High-heat_A_D4.pcd");
+	//convert_to_pcd("./Dataset/Tobacco_WildType_High-heat_C_D0.obj");
+	//iss_detector("./Dataset/objtopcd.pcd");
+	//show_pcd("./Dataset/objtopcd.pcd");
+	//sift_3d_detector("./Dataset/objtopcd.pcd");
+
+	std::string dirPath = "./Dataset";
+
+	// Get recursive list of files in given directory and its sub directories
+	
 }
