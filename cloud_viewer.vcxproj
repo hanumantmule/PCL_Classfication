@@ -314,8 +314,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="C:\bin\PCLTest\cloud_viewer.cpp" />
-    <ClCompile Include="convert_to_pcd.cpp" />
-    <ClCompile Include="iss.cpp" />
+    <ClCompile Include="list_files.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="C:\bin\PCLTest\ZERO_CHECK.vcxproj">

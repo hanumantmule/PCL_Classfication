@@ -13,6 +13,67 @@
 #include <pcl/io/vtk_lib_io.h>
 #include <pcl/keypoints/sift_keypoint.h>
 
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <string>
+#include <boost/filesystem.hpp>
+using namespace boost::system;
+namespace filesys = boost::filesystem;
+#ifndef USING_BOOST
+#define USING_BOOST
+#endif
+
+std::vector<std::string> getAllFilesInDir(const std::string& dirPath, const std::vector<std::string> dirSkipList = { })
+{
+	// Create a vector of string
+	std::vector<std::string> listOfFiles;
+	try {
+		// Check if given path exists and points to a directory
+		if (filesys::exists(dirPath) && filesys::is_directory(dirPath))
+		{
+			// Create a Recursive Directory Iterator object and points to the starting of directory
+			filesys::recursive_directory_iterator iter(dirPath);
+			// Create a Recursive Directory Iterator object pointing to end.
+			filesys::recursive_directory_iterator end;
+			// Iterate till end
+			while (iter != end)
+			{
+				// Check if current entry is a directory and if exists in skip list
+				if (filesys::is_directory(iter->path()) &&
+					(std::find(dirSkipList.begin(), dirSkipList.end(), iter->path().filename()) != dirSkipList.end()))
+				{
+					// Skip the iteration of current directory pointed by iterator
+#ifdef USING_BOOST
+// Boost Fileystsem  API to skip current directory iteration
+					iter.no_push();
+#else
+// c++17 Filesystem API to skip current directory iteration
+					iter.disable_recursion_pending();
+#endif
+				}
+				else
+				{
+					// Add the name in vector
+					if (!(filesys::is_directory(iter->path())))
+						listOfFiles.push_back(iter->path().string());
+
+				}
+				error_code ec;
+				// Increment the iterator to point to next entry in recursive iteration
+				iter.increment(ec);
+				if (ec) {
+					std::cerr << "Error While Accessing : " << iter->path().string() << " :: " << ec.message() << '\n';
+				}
+			}
+		}
+	}
+	catch (std::system_error& e)
+	{
+		std::cerr << "Exception :: " << e.what();
+	}
+	return listOfFiles;
+}
 
 
 double
@@ -124,14 +185,14 @@ int harris_3d_detector(std::string file_name)
 	detector.setRadius(resolution * 2);
 	pcl::StopWatch watch;
 	detector.compute(*keypoints);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr harris3d(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::copyPointCloud(*keypoints, *harris3d);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::copyPointCloud(*keypoints, *cloud_temp);
 
 	pcl::console::print_highlight("\nNo of cloud points:  %zd in %lfs\n", cloud->size(), watch.getTimeSeconds());
 
 	pcl::console::print_highlight("Detected %zd points in %lfs\n", keypoints->size(), watch.getTimeSeconds());
 
-
+	/*
 	pcl::PointIndicesConstPtr keypoints_indices = detector.getKeypointsIndices();
 	if (!keypoints_indices->indices.empty())
 	{
@@ -140,6 +201,21 @@ int harris_3d_detector(std::string file_name)
 	}
 	else
 		pcl::console::print_warn("Keypoints indices are empty!\n");
+	*/
+
+	// Visualization of keypoints along with the original cloud
+	pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> keypoints_color_handler(cloud_temp, 0, 255, 0);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_color_handler(cloud, 255, 0, 0);
+	viewer.setBackgroundColor(0.0, 0.0, 0.0);
+	viewer.addPointCloud(cloud, cloud_color_handler, "cloud");
+	viewer.addPointCloud(cloud_temp, keypoints_color_handler, "keypoints");
+	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 7, "keypoints");
+
+	while (!viewer.wasStopped())
+	{
+		viewer.spinOnce();
+	}
 
 	return 0;
 }
@@ -188,7 +264,7 @@ int sift_3d_detector(std::string file_name)
 	sift.setInputCloud(cloud_normals);
 	sift.compute(result);
 
-	std::cout << "No of SIFT points in the result are " << result.points.size() << std::endl;
+	std::cout << "\nNo of SIFT points in the result are " << result.points.size() << std::endl;
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp(new pcl::PointCloud<pcl::PointXYZ>);
 	copyPointCloud(result, *cloud_temp);
@@ -198,8 +274,9 @@ int sift_3d_detector(std::string file_name)
 	// Visualization of keypoints along with the original cloud
 	pcl::visualization::PCLVisualizer viewer("PCL Viewer");
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> keypoints_color_handler(cloud_temp, 0, 255, 0);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_color_handler(cloud_xyz, 255, 0, 0);
 	viewer.setBackgroundColor(0.0, 0.0, 0.0);
-	//viewer.addPointCloud(cloud_xyz, cloud_color_handler, "cloud");
+	viewer.addPointCloud(cloud_xyz, cloud_color_handler, "cloud");
 	viewer.addPointCloud(cloud_temp, keypoints_color_handler, "keypoints");
 	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 7, "keypoints");
 
@@ -287,13 +364,13 @@ int show_pcd(std::string pcd_file)
 }
 
 
-int convert_to_pcd(std::string obj_file)
+int convert_to_pcd(std::string obj_file, std::string pcd_file)
 {
 	pcl::PolygonMesh mesh;
 	pcl::io::loadPolygonFileOBJ(obj_file, mesh);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::fromPCLPointCloud2(mesh.cloud, *cloud);
-	pcl::io::savePCDFileASCII("head1PCD.pcd", *cloud);
+	pcl::io::savePCDFileASCII(pcd_file, *cloud);
 	return 0;
 }
 
@@ -303,9 +380,31 @@ int main(int argc, char** argv)
 {
 		
 	//shot_descriptor("iss_keypoints.pcd");
-	//harris_3d_detector("head1PCD.pcd");
-	//convert_to_pcd("Tomato_WildType_High-heat_A_D4.obj");
-	//iss_detector("head1PCD.pcd");
-	//show_pcd("iss_keypoints.pcd");
-	sift_3d_detector("head1PCD.pcd");
+	//harris_3d_detector("./Dataset/objtopcd.pcd");
+	//convert_to_pcd("./Dataset/Tobacco_WildType_High-heat_C_D0.obj");
+	//iss_detector("./Dataset/objtopcd.pcd");
+	//show_pcd("./Dataset/objtopcd.pcd");
+	//sift_3d_detector("./Dataset/objtopcd.pcd");
+
+	std::string dirPath = "./Dataset";
+	// Get recursive list of files in given directory and its sub directories
+	std::vector<std::string> listOfFiles = getAllFilesInDir(dirPath);
+	// Iterate over the vector and print all files
+	for (auto str : listOfFiles)
+	{
+		//std::cout << str << std::endl;
+		if (str.substr(str.find_last_of(".") + 1) == "obj") {
+			
+			std::string pcd_file_name = str.substr(0, str.find_last_of('.')) + ".pcd";
+			//cout << pcd_file_name << endl;
+			convert_to_pcd(str, pcd_file_name);
+		}
+		else {
+			std::cout << "Skipping file: "<< str<<" Extenstion is not obj..." << std::endl;
+		}
+	
+
+	}
+	std::cout << "**********************" << std::endl;
+	std::cout << listOfFiles.size();
 }

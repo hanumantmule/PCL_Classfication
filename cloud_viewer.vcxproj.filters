@@ -4,10 +4,7 @@
     <ClCompile Include="C:\bin\PCLTest\cloud_viewer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="iss.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="convert_to_pcd.cpp" />
+    <ClCompile Include="list_files.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="C:\bin\PCLTest\CMakeLists.txt" />
