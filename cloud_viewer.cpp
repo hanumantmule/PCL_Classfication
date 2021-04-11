@@ -13,6 +13,8 @@
 #include <pcl/io/vtk_lib_io.h>
 #include <pcl/keypoints/sift_keypoint.h>
 
+#include <fstream>
+
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -196,7 +198,7 @@ int harris_3d_detector(std::string file_name)
 	pcl::PointIndicesConstPtr keypoints_indices = detector.getKeypointsIndices();
 	if (!keypoints_indices->indices.empty())
 	{
-		pcl::io::savePCDFile("./Dataset/3d_haris_keypoints.pcd", *cloud, keypoints_indices->indices, false);
+		pcl::io::savePCDFile("./Dataset/A/3d_haris_keypoints.pcd", *cloud, keypoints_indices->indices, false);
 		pcl::console::print_info("Saved keypoints to 3d_haris_keypoints.pcd\n");
 	}
 	else
@@ -309,7 +311,7 @@ int shot_descriptor(std::string file_name)
 	// Estimate the normals.
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
 	normalEstimation.setInputCloud(cloud);
-	normalEstimation.setRadiusSearch(0.99);
+	normalEstimation.setRadiusSearch(2.50);
 
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
 	normalEstimation.setSearchMethod(kdtree);
@@ -321,7 +323,7 @@ int shot_descriptor(std::string file_name)
 	shot.setInputNormals(normals);
 	// The radius that defines which of the keypoint's neighbors are described.
 	// If too large, there may be clutter, and if too small, not enough points may be found.
-	shot.setRadiusSearch(0.99);
+	shot.setRadiusSearch(10.50);
 	shot.setKSearch(0);
 
 	shot.compute(*descriptors);
@@ -330,9 +332,34 @@ int shot_descriptor(std::string file_name)
 	std::cout << " SHOT feature estimated";
 	std::cout << " with size " << descriptors->size() << std::endl;
 	std::cout << "SHOT output points.size (): " << descriptors->points.size() << std::endl;
+	std::ofstream myfile;
+	std::string csv_file_name = file_name.substr(0, file_name.find_last_of('.')) + "_shot_descriptor.csv";
+	myfile.open(csv_file_name);
+	std::cout << "CSV file writing started"<< std::endl;
+	for (int i = 0; i < descriptors->points.size(); i++)
+	{
+		for (int j = 0; j < descriptors->points[i].descriptorSize(); j++)
+		{
+			//std::cout << "SHOT output points[" << i << "].size (): " << descriptors->points[i].descriptor[j] << std::endl;	
+			
+			myfile << descriptors->points[i].descriptor[j] << ",";
+		}
+		myfile << "\n";
+	}
+	myfile.close();
+	std::cout << "CSV file writing ended.." << std::endl;
 
 	// Display and retrieve the SHOT descriptor for the first point.
 	std::cout << descriptors->points[0] << std::endl;
+	
+	//std::string output_filename = file_name;
+	//output_filename.append("_localdesc.pcd");
+	
+	pcl::io::savePCDFile("./Dataset/decriptor.pcd", *descriptors);
+	
+	//cout<<save2pcd("./Dataset/decriptor2.pcd", *descriptors);
+	
+	pcl::console::print_info("Saved local descriptors as %s\n", "./Dataset/decriptor.pcd");
 	return 0;
 }
 
@@ -397,11 +424,12 @@ int list_files(std::string dirPath)
 	return listOfFiles.size();
 }
 
+
 int main(int argc, char** argv)
 {
 		
-	shot_descriptor("./Dataset/3d_haris_keypoints.pcd");
-	//harris_3d_detector("./Dataset/Tomato_WildType_High-heat_A_D4.pcd");
+	shot_descriptor("./Dataset/A/3d_haris_keypoints.pcd");
+	//harris_3d_detector("./Dataset/A/Tobacco_WildType_High-heat_C_D0.pcd");
 	//convert_to_pcd("./Dataset/Tobacco_WildType_High-heat_C_D0.obj");
 	//iss_detector("./Dataset/objtopcd.pcd");
 	//show_pcd("./Dataset/objtopcd.pcd");
