@@ -198,7 +198,8 @@ int harris_3d_detector(std::string file_name)
 	pcl::PointIndicesConstPtr keypoints_indices = detector.getKeypointsIndices();
 	if (!keypoints_indices->indices.empty())
 	{
-		pcl::io::savePCDFile("./Dataset/A/3d_haris_keypoints.pcd", *cloud, keypoints_indices->indices, false);
+		std::string output_file_name = file_name.substr(0, file_name.find_last_of('.')) + "_HARIS.pcd";
+		pcl::io::savePCDFile(output_file_name, *cloud, keypoints_indices->indices, false);
 		pcl::console::print_info("Saved keypoints to 3d_haris_keypoints.pcd\n");
 	}
 	else
@@ -206,6 +207,7 @@ int harris_3d_detector(std::string file_name)
 	
 
 	// Visualization of keypoints along with the original cloud
+	/*
 	pcl::visualization::PCLVisualizer viewer("PCL Viewer");
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> keypoints_color_handler(cloud_temp, 0, 255, 0);
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> cloud_color_handler(cloud, 255, 0, 0);
@@ -218,7 +220,7 @@ int harris_3d_detector(std::string file_name)
 	{
 		viewer.spinOnce();
 	}
-
+	*/
 	return 0;
 }
 
@@ -333,7 +335,7 @@ int shot_descriptor(std::string file_name)
 	std::cout << " with size " << descriptors->size() << std::endl;
 	std::cout << "SHOT output points.size (): " << descriptors->points.size() << std::endl;
 	std::ofstream myfile;
-	std::string csv_file_name = file_name.substr(0, file_name.find_last_of('.')) + "_shot_descriptor.csv";
+	std::string csv_file_name = file_name.substr(0, file_name.find_last_of('.')) + "_SHOT.csv";
 	myfile.open(csv_file_name);
 	std::cout << "CSV file writing started"<< std::endl;
 	for (int i = 0; i < descriptors->points.size(); i++)
@@ -408,17 +410,19 @@ int list_files(std::string dirPath)
 	for (auto str : listOfFiles)
 	{
 		//std::cout << str << std::endl;
-		if (str.substr(str.find_last_of(".") + 1) == "obj") {
+		/*if (str.substr(str.find_last_of(".") + 1) == "obj") {
 
 			std::string pcd_file_name = str.substr(0, str.find_last_of('.')) + ".pcd";
 			//cout << pcd_file_name << endl;
-			convert_to_pcd(str, pcd_file_name);
+			//convert_to_pcd(str, pcd_file_name);
+			
 		}
 		else {
 			std::cout << "Skipping file: " << str << " Extenstion is not obj..." << std::endl;
-		}
+		}*/
 
-
+		//harris_3d_detector(str);
+		shot_descriptor(str);
 	}
 	std::cout << "**********************" << std::endl;
 	return listOfFiles.size();
@@ -428,14 +432,15 @@ int list_files(std::string dirPath)
 int main(int argc, char** argv)
 {
 		
-	shot_descriptor("./Dataset/A/3d_haris_keypoints.pcd");
+	//shot_descriptor("./Dataset/A/3d_haris_keypoints.pcd");
 	//harris_3d_detector("./Dataset/A/Tobacco_WildType_High-heat_C_D0.pcd");
 	//convert_to_pcd("./Dataset/Tobacco_WildType_High-heat_C_D0.obj");
 	//iss_detector("./Dataset/objtopcd.pcd");
 	//show_pcd("./Dataset/objtopcd.pcd");
 	//sift_3d_detector("./Dataset/objtopcd.pcd");
 
-	std::string dirPath = "./Dataset";
+	std::string dirPath = "./Dataset/HARIS/";
+	list_files(dirPath);
 
 	// Get recursive list of files in given directory and its sub directories
 	
