@@ -1,5 +1,9 @@
 # Readme
-https://github.com/hanumantmule/PCL_Classfication
+The use of 3D data for plant health monitoring is a recent phenomenon. Since 3D point clouds contain more information than plant 2D images, In this paper,
+we compare the performance of different keypoint detectors and local feature descriptors combinations along with different classification algorithms, for the plant growth stage and it’s growth condition classification based on 3D point clouds of the plants.
+
+## Getting Started
+Clone this project using below github url: https://github.com/hanumantmule/PCL_Classfication
 
 ## Process of PCL installation.
 1. Download All-in-One Installer : 
