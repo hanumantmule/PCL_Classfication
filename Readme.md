@@ -71,8 +71,34 @@ The library depends on ```scikit-learn``` and all the feature aggregation method
 
 
 ## 3. MATLAB Installation
+This program has been successfully compiled and executed on the following Windows platforms:
+Windows 10 64-bit, using TDM-GCC 5.10 and CMake 3.3.1
+	
+Please follow the instructions below to compile and install SIFT3D from source.
 
+1. Install CMake.
 
+2. Install MinGW via TDM-GCC
+
+3. Download and extract gnumex
+   Run Matlab as an administrator
+   Run the "gnumex" program from within Matlab
+   Make sure the required paths are detected
+
+4. Download the binaries for MinGW and your verison of Windows (lapack.dll, blas.dll)
+   Move lapack.dll and blas.dll to the TDM-GCC/bin directory
+	
+5. Install zlib.
+
+6. Navigate to SIFT3D.
+   Generate MinGW Makefiles with CMake
+   Ensure that the Matlab libraries are .dll's and not .lib's. 
+   Manually edit the paths for Matlab_MEX_LIBRARY, Matlab_MX_LIBRARY, MWLAPACK_LIBRARY, and MWBLAS_LIBRARY, so that "libmex.lib" is changed to "libmex.dll", etc. 
+   This requires locating these files within your Matlab installation. Check the "bin" directories for .dll's.
+
+7. Compile and install with MinGW
+   "mingw32-make"
+   "mingw32-make install" (may require administrator privileges) 
 
 ## How to Run
 1. Run sequence:
