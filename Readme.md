@@ -62,15 +62,16 @@ you will see the visualization of the PCD file.
 Example:
 ![image](https://github.com/hanumantmule/PCL_Classfication/blob/master/Screenshots/9.png?raw=true)
 
----------------------------------------
+
 ## 2. Local feature aggregation
 The library depends on ```scikit-learn``` and all the feature aggregation methods extend the scikit-learn BaseEstimator class.
 
----------------------
+
+
 ## 3. MATLAB Installation
 
 
--------------------------
+
 ## How to Run
 1. Run sequence:
 	```Detector --> Descriptor --> Encoder --> Classifier```
