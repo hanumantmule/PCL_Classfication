@@ -5,7 +5,7 @@ we compare the performance of different keypoint detectors and local feature des
 ## Getting Started
 Clone this project using below github url: https://github.com/hanumantmule/PCL_Classfication
 
-## Process of PCL installation.
+## 1. Process of PCL installation.
 1. Download All-in-One Installer : 
 ```https://github.com/PointCloudLibrary/pcl/releases```
 Including OpenNi
@@ -63,11 +63,11 @@ Example:
 ![image](https://github.com/hanumantmule/PCL_Classfication/blob/master/Screenshots/9.png?raw=true)
 
 ---------------------------------------
-## Local feature aggregation
+## 2. Local feature aggregation
 The library depends on ```scikit-learn``` and all the feature aggregation methods extend the scikit-learn BaseEstimator class.
 
 ---------------------
-## MATLAB Installation
+## 3. MATLAB Installation
 
 
 -------------------------
