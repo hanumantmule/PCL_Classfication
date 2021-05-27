@@ -66,6 +66,8 @@ Example:
 ## 2. Local feature aggregation
 The library depends on ```scikit-learn``` and all the feature aggregation methods extend the scikit-learn BaseEstimator class.
 
+* [scikit-learn](https://scikit-learn.org/) - Simple and efficient tools for predictive data analysis.
+
 
 
 ## 3. MATLAB Installation
